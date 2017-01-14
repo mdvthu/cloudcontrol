@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# Digital Ocean control script
+
+# Config:
+#
+# 1) Create a file called .token containing your API key, or define $TOKEN=<API key>
+#$TOKEN = ""
+#
+# 2) Set your defaults
+DO_SSH_KEYS="5330288"			# name of the SSH key(s) to add (for newly created VMs)
+DO_SVR_LOC="lon1"			# default data center location
+DO_DEF_IMG="debian-8-x64"		# default image
+DO_TAG="script-created"			# tag to add to new droplets
+
+###############################################################################
+
+IFS=$'\n'; 		# set the internal field separator
+TMP_PIPE="/tmp/do.pipe"	# name of the file to use when formatting the data
+
+if ( [[ -f .token ]] ); then
+	TOKEN=`cat .token`; 	# API token, stored .token file, in the current directory
+fi
+
+# check to see if an API token is available somewhere
+if ( ! [[ -f .token ]] ) && ( ! [[ $TOKEN ]] ); then
+	printf "\nYour API token is not defined \nPlease either create a .token file, or define \$TOKEN \n(See \"Config\" for more information)\n\n"
+	exit 1
+fi
+
+# help text
+printusage() {
+	printf "\t-h\t\tthis help text\n"
+	printf "\t-d\t\tlist Droplets\n";
+	printf "\t-s\t\tlist snapshots\n";
+	printf "\t-k\t\tlist SSH keys\n";
+	printf "\t-D <name>\tcreate a new Droplet called <name>\n";
+	printf "\t-S <ID>\t\tcreate a new Snapshot from Droplet of <ID>\n";
+	printf "\t-r <ID>\t\tdelete the Droplet of <ID>\n";
+	printf "\t-R <ID>\t\tdelete all Droplets, tagged with \""$DO_TAG"\"\n";
+}
+
+# confirmation function. activated before doing potentially bad stuff
+promptconfirm() { 
+	while true; do
+		read -r -n 5 -p "${1:-Continue?} [N/yes]: " REPLY
+		case $REPLY in
+			yes) 
+				return 0 
+				;;
+			y)
+				printf "Type "$(tput bold)"yes"$(tput sgr0)" in full to continue\n";
+				continue;
+				;;
+			*)
+				echo "Exiting";
+				return 1 ;;
+		esac 
+  done  
+}
+
+# display usage info if no options are provided
+if [[ ! $@ ]]; then
+	echo "Usage:";
+	printusage;
+fi
+
+# use get opts to process the options
+while getopts ":dsD:S:r:Rhk" opt; do
+	case $opt in 
+		d)
+			# List currently available droplets: 
+			printf "Droplets:\n\n"
+			mkfifo $TMP_PIPE || true
+			printf "%s, %s, %s, %s, %s\n" "ID" "Name" "Dist." "IP address" "Datacenter" > $TMP_PIPE &
+			curl -sS -X GET "https://api.digitalocean.com/v2/droplets"  -H "Authorization: Bearer $TOKEN"  -H "Content-Type: application/json" | jq -r '.droplets[] | "\(.id), \(.name), \(.image.distribution), \(.networks.v4[].ip_address), \(.region.name)"' > $TMP_PIPE &
+			column -t -s "," < $TMP_PIPE;
+			rm $TMP_PIPE;
+			break;
+			;;
+		s)
+			# List available snapshots
+			printf "Snapshots:\n\n"
+			mkfifo $TMP_PIPE || true
+			printf "%s, %s, %s \n" "ID" "Name" "Creation time" > $TMP_PIPE &
+			curl -sS -X GET "https://api.digitalocean.com/v2/snapshots" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" | jq -r '.snapshots[] | "\(.id), \(.name), \(.created_at)"' > $TMP_PIPE &
+			column -t -s "," < $TMP_PIPE
+			rm $TMP_PIPE
+			break;
+			;;
+		k)
+			# List available SSH keys
+			printf "SSH keys:\n\n"
+			mkfifo $TMP_PIPE || true
+			printf "%s, %s\n" "ID" "Name" > $TMP_PIPE &
+			curl -sS -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" "https://api.digitalocean.com/v2/account/keys" | jq -r '.ssh_keys[] | "\(.id), \(.name)"' > $TMP_PIPE &
+			column -t -s "," < $TMP_PIPE;
+			rm $TMP_PIPE
+			break;
+			;;
+		D)
+			# Create a new droplet, return the ID 
+			curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"name":"'$OPTARG'","region":"'$DO_SVR_LOC'","size":"512mb","image":"'$DO_DEF_IMG'","ssh_keys": [ '$DO_SSH_KEYS' ],"backups":false,"ipv6":true,"user_data":null,"private_networking":null,"volumes": null,"tags":["'$DO_TAG'"]}' "https://api.digitalocean.com/v2/droplets"
+			break;
+			;;
+		S)
+			# create a new snapshot
+			curl -X POST "https://api.digitalocean.com/v2/droplets/$OPTARG/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"snapshot","name":"Script created Snapshot"}' | jq ".";
+			break;
+			;;
+		r)
+			# delete (remove) a droplet 
+			curl -sS -X DELETE "https://api.digitalocean.com/v2/droplets/$OPTARG" -H "Authorization: Bearer $TOKEN";
+			break;
+			;;
+
+		R)
+			# delete all droplets
+			echo "Deleting all Droplets tagged as \""$DO_TAG"\""
+			promptconfirm || exit 1;
+			for i in `curl -sS -X GET "https://api.digitalocean.com/v2/droplets?tag_name=$DO_TAG"  -H "Authorization: Bearer $TOKEN"  -H "Content-Type: application/json" | jq ".droplets[].id"`; do 
+				curl -sS -X DELETE "https://api.digitalocean.com/v2/droplets/$i" -H "Authorization: Bearer $TOKEN";
+			done	
+			break;
+			;;
+		[\?,h])
+			# help option
+			echo "Usage:";
+			printusage;
+			break;
+			;;
+		:)
+			# Usage
+			echo "Option requires an argument. Usage:";
+			printusage;
+			;;
+	esac
+done
+
+#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"shutdown"}' | jq ".";
+#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_off"}' | jq ".";
+#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_on"}' | jq ".";
+
+# Create a droplet from a snapshot, SNAPSHOT_ID
+SNAPSHOT_ID='22003399';
+#curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"name":"example.com","region":"ams2","size":"512mb","image":"'"$SNAPSHOT_ID"'","ssh_keys":null,"backups":false,"ipv6":true,"user_data":null,"private_networking":null,"volumes": null,"tags":["web"]}' "https://api.digitalocean.com/v2/droplets"
+
