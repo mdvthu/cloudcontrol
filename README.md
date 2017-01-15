@@ -1,10 +1,12 @@
-# cloudcontrol
+cloudcontrol
+============
 Digital Ocean control script.  
 
 Quickstart:
+-----------
 
-1) Log in to your Digital Ocean to obtain an API token
-2) Create a file called .token containing your API key, in the same directory as this script
-3) Edit the default options at the top of the script
+0. Log in to your Digital Ocean to obtain an API token
+0. Create a file called .token containing your API key, in the same directory as this script
+0. Edit the default options at the top of the script
 
-Further help information is available with -h 
+Further help information is available with the command switch ``-h`` 
