@@ -129,6 +129,7 @@ while getopts ":dsD:S:r:RhkI:" opt; do
 			done	
 			break;
 			;;
+
 		[\?,h])
 			# help option
 			echo "Usage:";
@@ -142,8 +143,4 @@ while getopts ":dsD:S:r:RhkI:" opt; do
 			;;
 	esac
 done
-
-#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"shutdown"}' | jq ".";
-#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_off"}' | jq ".";
-#curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_on"}' | jq ".";
 
