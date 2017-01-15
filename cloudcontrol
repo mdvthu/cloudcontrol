@@ -24,7 +24,7 @@ fi
 
 # check to see if an API token is available somewhere
 if ( ! [[ -f .token ]] ) && ( ! [[ $TOKEN ]] ); then
-	printf "\nYour API token is not defined \nPlease either create a .token file, or define \$TOKEN \n(See \"Config\" for more information)\n\n"
+	printf "\nYour API token is not defined \nPlease either create a .token file, or define \$TOKEN \n(See README.md for more information)\n\n"
 	exit 1
 fi
 
@@ -35,6 +35,7 @@ printusage() {
 	printf "\t-s\t\tlist snapshots\n";
 	printf "\t-k\t\tlist SSH keys\n";
 	printf "\t-D <name>\tcreate a new Droplet called <name>\n";
+	printf "\t-I <img ID>\tcreate a new Droplet from <img ID>\n";
 	printf "\t-S <ID>\t\tcreate a new Snapshot from Droplet of <ID>\n";
 	printf "\t-r <ID>\t\tdelete the Droplet of <ID>\n";
 	printf "\t-R <ID>\t\tdelete all Droplets, tagged with \""$DO_TAG"\"\n";
@@ -66,7 +67,7 @@ if [[ ! $@ ]]; then
 fi
 
 # use get opts to process the options
-while getopts ":dsD:S:r:Rhk" opt; do
+while getopts ":dsD:S:r:RhkI:" opt; do
 	case $opt in 
 		d)
 			# List currently available droplets: 
@@ -101,6 +102,11 @@ while getopts ":dsD:S:r:Rhk" opt; do
 		D)
 			# Create a new droplet, return the ID 
 			curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"name":"'$OPTARG'","region":"'$DO_SVR_LOC'","size":"512mb","image":"'$DO_DEF_IMG'","ssh_keys": [ '$DO_SSH_KEYS' ],"backups":false,"ipv6":true,"user_data":null,"private_networking":null,"volumes": null,"tags":["'$DO_TAG'"]}' "https://api.digitalocean.com/v2/droplets"
+			break;
+			;;
+		I)
+			# create a new Droplet from a specified image/snapshot
+			curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"name":"VM from image '$OPTARG'","region":"'$DO_SVR_LOC'","size":"512mb","image":"'"$OPTARG"'","ssh_keys":null,"backups":false,"ipv6":true,"user_data":null,"private_networking":null,"volumes": null,"tags":["'$DO_TAG'"]}' "https://api.digitalocean.com/v2/droplets"
 			break;
 			;;
 		S)
@@ -140,8 +146,4 @@ done
 #curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"shutdown"}' | jq ".";
 #curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_off"}' | jq ".";
 #curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"type":"power_on"}' | jq ".";
-
-# Create a droplet from a snapshot, SNAPSHOT_ID
-SNAPSHOT_ID='22003399';
-#curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"name":"example.com","region":"ams2","size":"512mb","image":"'"$SNAPSHOT_ID"'","ssh_keys":null,"backups":false,"ipv6":true,"user_data":null,"private_networking":null,"volumes": null,"tags":["web"]}' "https://api.digitalocean.com/v2/droplets"
 
