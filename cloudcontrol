@@ -30,15 +30,17 @@ fi
 
 # help text
 printusage() {
-	printf "\t-h\t\tthis help text\n"
-	printf "\t-d\t\tlist Droplets\n";
-	printf "\t-s\t\tlist snapshots\n";
-	printf "\t-k\t\tlist SSH keys\n";
-	printf "\t-D <name>\tcreate a new Droplet called <name>\n";
-	printf "\t-I <img ID>\tcreate a new Droplet from <img ID>\n";
-	printf "\t-S <ID>\t\tcreate a new Snapshot from Droplet of <ID>\n";
-	printf "\t-r <ID>\t\tdelete the Droplet of <ID>\n";
-	printf "\t-R <ID>\t\tdelete all Droplets, tagged with \""$DO_TAG"\"\n";
+	declare -A options=( \
+		['h        ']="this help text" \
+		['d        ']="list Droplets" \
+		['s        ']="list Snapshots" \
+		['k        ']="list SSH keys" \
+		['D <name> ']="create a new Droplet called <name>" \
+		['I <imgid>']="create a new Droplet from <imgid>" \
+		['S <id>   ']="create a new Snapshot from Droplet of <id>" \
+		['r <id>   ']="delete Droplet <id>" \
+		['R        ']="delete all Droplets tagged with \"$DO_TAG\"")
+	for key in "${!options[@]}"; do printf "%s$key \t ${options[$key]}\n" ' -'; done | sort 
 }
 
 # confirmation function. activated before doing potentially bad stuff
@@ -65,6 +67,17 @@ if [[ ! $@ ]]; then
 	echo "Usage:";
 	printusage;
 fi
+
+do_action() {
+	# List currently available droplets: 
+	printf "Droplets:\n\n"
+	mkfifo $TMP_PIPE || true
+	printf "%s, %s, %s, %s, %s\n" "ID" "Name" "Dist." "IP address" "Datacenter" > $TMP_PIPE &
+	curl -sS -X GET "https://api.digitalocean.com/v2/droplets"  -H "Authorization: Bearer $TOKEN"  -H "Content-Type: application/json" | jq -r '.droplets[] | "\(.id), \(.name), \(.image.distribution), \(.networks.v4[].ip_address), \(.region.name)"' > $TMP_PIPE &
+	column -t -s "," < $TMP_PIPE;
+	rm $TMP_PIPE;
+}
+
 
 # use get opts to process the options
 while getopts ":dsD:S:r:RhkI:" opt; do
@@ -144,3 +157,5 @@ while getopts ":dsD:S:r:RhkI:" opt; do
 	esac
 done
 
+
+exit
