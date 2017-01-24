@@ -10,3 +10,8 @@ Quickstart:
 0. Edit the default options at the top of the script
 
 Further help information is available with the command switch ``-h`` 
+
+To do:
+------
+0. --version and --help command line options
+0. Format output for all commands using jq
