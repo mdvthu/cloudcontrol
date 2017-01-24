@@ -13,5 +13,5 @@ Further help information is available with the command switch ``-h``
 
 To do:
 ------
-0. --version and --help command line options
-0. Format output for all commands using jq
+0. ``--version`` and ``--help`` command line options
+0. Format output for all commands using ``jq``
