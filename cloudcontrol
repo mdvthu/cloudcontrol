@@ -9,7 +9,7 @@
 #
 # 2) Set your defaults
 DO_SSH_KEYS="5330288"			# name of the SSH key(s) to add (for newly created VMs)
-DO_SVR_LOC="lon1"			# default data center location
+DO_SVR_LOC="ams2"			# default data center location
 DO_DEF_IMG="debian-8-x64"		# default image
 DO_TAG="script-created"			# tag to add to new droplets
 
