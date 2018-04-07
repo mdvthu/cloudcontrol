@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 
+# dodydns
+# update script for dynamic DNS hostname to the Digital Ocean nameservers
+
 # User configurable data
 api_token_fn = ".token"
 api_domain = "sherms.co.uk"
 api_endpoint = "https://api.digitalocean.com/v2/domains/"
 
-dyn_ip_addr = '80.189.255.65'
-# Query OpenDNS servers for my external IP address
-# short output prints just the IP address
-# dig myip.opendns.com. @resolver1.opendns.com +short
+def get_ext_ip_opendns():
+    import dns.resolver
+    resolver = dns.resolver.Resolver()
+    results = resolver.query('myip.opendns.com')
+    ip = [result.to_text() for result in results][0]
+    return ip
+
+#dyn_ip_addr = '80.189.255.65'
+dyn_ip_addr = get_ext_ip_opendns()
 
 import requests, sys
 
