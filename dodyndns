@@ -1,14 +1,45 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 
-# DO API token
-TOKEN=`cat .token`
-DOMAIN="mdvthu.com"
+# User configurable data
+api_token_fn = ".token"
+api_domain = "sherms.co.uk"
+api_endpoint = "https://api.digitalocean.com/v2/domains/"
 
+dyn_ip_addr = '80.189.255.65'
 # Query OpenDNS servers for my external IP address
 # short output prints just the IP address
-EXT_IP=`dig myip.opendns.com. @resolver1.opendns.com +short`
+# dig myip.opendns.com. @resolver1.opendns.com +short
 
-printf "My external IP address appears to be: %s\n", $EXT_IP
+import requests, sys
 
-curl -Ss -H "Authorization: Bearer $TOKEN" https://api.digitalocean.com/v2/domains/$DOMAIN/records
+# read DO API token file
+with open(api_token_fn, 'r') as f:
+    api_token = f.readline().strip()
+# build the headers
+http_headers = {"Authorization": "Bearer " + api_token }
+
+# Does the domain exist on the DO DNS servers?
+try:
+    r = requests.get(api_endpoint + api_domain, headers = http_headers).json()['domain']
+except (KeyError, ValueError):
+    print("Domain " + api_domain + " can't be found on the nameserver")
+    sys.exit(-1)
+
+# Get the ID of the A record
+a_record_id = 0
+s = requests.get(api_endpoint + api_domain + "/records", headers = http_headers)
+for i in s.json()['domain_records']:
+    if i['type'] == 'A':
+        a_record_id = i['id']
+        break
+
+# Update the correct record with the desired IP address
+if a_record_id != 0:
+    print("Updating A record")
+    u = requests.put(api_endpoint + api_domain + '/records/' + str(a_record_id), headers= http_headers, data='data: ' + dyn_ip_addr)
+else:
+    print("No A record exists on the nameserver for this domain")
+    print("Creating a new record")
+    c = requests.post(api_endpoint + api_domain + "/records", headers = http_headers, data = {"type": "A", "name": "@", "data": dyn_ip_addr })
+
 
