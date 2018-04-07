@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# DO API token
+TOKEN=`cat .token`
+DOMAIN="mdvthu.com"
+
+# Query OpenDNS servers for my external IP address
+# short output prints just the IP address
+EXT_IP=`dig myip.opendns.com. @resolver1.opendns.com +short`
+
+printf "My external IP address appears to be: %s\n", $EXT_IP
+
+curl -Ss -H "Authorization: Bearer $TOKEN" https://api.digitalocean.com/v2/domains/$DOMAIN/records
+
