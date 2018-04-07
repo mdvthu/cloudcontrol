@@ -12,6 +12,7 @@ DO_SSH_KEYS="5330288"			# name of the SSH key(s) to add (for newly created VMs)
 DO_SVR_LOC="ams2"			# default data center location
 DO_DEF_IMG="debian-8-x64"		# default image
 DO_TAG="script-created"			# tag to add to new droplets
+version_number="0.01"
 
 ###############################################################################
 
@@ -37,7 +38,8 @@ printusage() {
 		['I <imgid>']="create a new Droplet from <imgid>" \
 		['S <id>']="create a new Snapshot from Droplet of <id>" \
 		['r <id>']="delete Droplet <id>" \
-		['R']="delete all Droplets tagged with \"$DO_TAG\"")
+		['R']="delete all Droplets tagged with \"$DO_TAG\"" \
+		['v']="print version information")
 	# loop through the above associative array to print all the options
 	for key in "${!options[@]}"; do printf "%s$key, ${options[$key]}\n" ' -'; done | sort | column -t -s ",";
 }
@@ -59,6 +61,11 @@ promptconfirm() {
 				return 1 ;;
 		esac 
   done  
+}
+
+# print version information
+printversion() {
+	printf "Cloudcontrol version %s\n" $version_number
 }
 
 # display usage info if no options are provided
@@ -92,7 +99,7 @@ do_list () {
 }
 
 # use get opts to process the options
-while getopts ":l:D:S:r:RhI:" opt; do
+while getopts ":l:D:S:r:RhvI:" opt; do
 	case $opt in 
 		l)
 			do_list $OPTARG
@@ -128,7 +135,10 @@ while getopts ":l:D:S:r:RhI:" opt; do
 			done	
 			break;
 			;;
-
+		v)
+			printversion;
+			break;
+			;;
 		[\?,h])
 			# help option
 			echo "Usage:";
