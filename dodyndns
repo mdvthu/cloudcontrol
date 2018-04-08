@@ -6,6 +6,8 @@
 # user configurable data
 API_TOKEN_FN = ".token"
 API_DOMAIN = "sherms.co.uk"
+
+# shouldn't change
 API_ENDPOINT = "https://api.digitalocean.com/v2/domains/"
 
 # modules
@@ -35,12 +37,10 @@ def get_dns_ip():
 
 # does the current resolvable IP match the external IP?
 if get_dns_ip() == get_ext_ip_opendns():
-    print("DNS record already matches ext. IP")
-    sys.exit(-1)
+    print("DNS record already matches external IP")
+    sys.exit()
 
-#dyn_ip_addr = '80.189.255.65'
 dyn_ip_addr = get_ext_ip_opendns()
-
 
 # read DO API token file
 with open(API_TOKEN_FN, 'r') as f:
@@ -72,5 +72,4 @@ else:
     print("No A record exists on the nameserver for this domain")
     print("Creating a new record")
     c = requests.post(API_ENDPOINT + API_DOMAIN + "/records", headers = http_headers, data = {"type": "A", "name": "@", "data": dyn_ip_addr })
-
 
