@@ -3,12 +3,21 @@
 # dodydns
 # update script for dynamic DNS hostname to the Digital Ocean nameservers
 
-# User configurable data
+# user configurable data
 API_TOKEN_FN = ".token"
 API_DOMAIN = "sherms.co.uk"
 API_ENDPOINT = "https://api.digitalocean.com/v2/domains/"
 
+# modules
+# requests:     interaction with web API
+# sys:          exit on error
+import requests, sys
+
 def get_ext_ip_opendns():
+    '''
+    Use the OpenDNS servers to get the 
+    public-facing IP address of the WAN interface
+    '''
     import dns.resolver
     resolver = dns.resolver.Resolver()
     resolver.nameservers = ["208.67.220.220"]
@@ -16,12 +25,15 @@ def get_ext_ip_opendns():
     ip = [result.to_text() for result in results][0]
     return ip
 
-import requests, sys
-
 def get_dns_ip():
+    '''
+    Returns the current public resolvable DNS
+    name of the user-configured domain
+    '''
     import socket
     return socket.gethostbyname(API_DOMAIN)
 
+# does the current resolvable IP match the external IP?
 if get_dns_ip() == get_ext_ip_opendns():
     print("DNS record already matches ext. IP")
     sys.exit(-1)
@@ -36,20 +48,21 @@ with open(API_TOKEN_FN, 'r') as f:
 # build the headers
 http_headers = {"Authorization": "Bearer " + api_token }
 
-# Does the domain exist on the DO DNS servers?
+# does the domain exist on the DO DNS servers?
 try:
     r = requests.get(API_ENDPOINT + API_DOMAIN, headers = http_headers).json()['domain']
 except (KeyError, ValueError):
     print("Domain " + API_DOMAIN + " can't be found on the nameserver")
     sys.exit(-1)
 
-# Get the ID of the A record
+# get the Digital Ocean ID of the A record
 a_record_id = 0
 s = requests.get(API_ENDPOINT + API_DOMAIN + "/records", headers = http_headers)
 for i in s.json()['domain_records']:
     if i['type'] == 'A':
         a_record_id = i['id']
         break
+# a_record_id will remain 0 if no A record found
 
 # Update the correct record with the desired IP address
 if a_record_id != 0:
