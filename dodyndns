@@ -56,16 +56,16 @@ except (KeyError, ValueError):
     sys.exit(-1)
 
 # get the Digital Ocean ID of the A record
-a_record_id = 0
+a_record_id = None
 s = requests.get(API_ENDPOINT + API_DOMAIN + "/records", headers = http_headers)
 for i in s.json()['domain_records']:
     if i['type'] == 'A':
         a_record_id = i['id']
         break
-# a_record_id will remain 0 if no A record found
+# a_record_id will remain None if no A record found
 
 # Update the correct record with the desired IP address
-if a_record_id != 0:
+if a_record_id:
     print("Updating A record")
     u = requests.put(API_ENDPOINT + API_DOMAIN + '/records/' + str(a_record_id), headers= http_headers, data='data: ' + dyn_ip_addr)
 else:
