@@ -11,11 +11,13 @@
 import requests
 import sys
 import dns.resolver
+import logging
 
 
 # user configurable data
 API_TOKEN_FN = ".token"
 API_DOMAIN = "sherms.co.uk"
+logging.basicConfig(level=logging.DEBUG)
 
 # shouldn't change
 API_ENDPOINT = "https://api.digitalocean.com/v2/domains/"
