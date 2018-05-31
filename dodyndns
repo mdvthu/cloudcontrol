@@ -8,16 +8,23 @@
 # requests:     interaction with web API
 # sys:          exit on error
 # dns.resolver: lookup IP address via opendns
+# socket:       issue local DNS lookup
 import requests
 import sys
 import dns.resolver
+import socket
 import logging
 
 
 # user configurable data
 API_TOKEN_FN = ".token"
 API_DOMAIN = "sherms.co.uk"
-logging.basicConfig(level=logging.DEBUG)
+
+# levels: DEBUG | INFO | WARNING | ERROR | CRITICAL
+logging.basicConfig(
+        format='%(asctime)s %(levelname)s: %(message)s', 
+        level=logging.DEBUG
+        )
 
 # shouldn't change
 API_ENDPOINT = "https://api.digitalocean.com/v2/domains/"
@@ -28,10 +35,12 @@ def get_ext_ip_opendns():
     Use the OpenDNS servers to get the
     public-facing IP address of the WAN interface
     '''
+    logging.debug("Fetching my external IP using OpenDNS...")
     resolver = dns.resolver.Resolver()
     resolver.nameservers = ["208.67.220.220"]
     results = resolver.query('myip.opendns.com')
     ip = [result.to_text() for result in results][0]
+    logging.info("External IP (via OpenDNS): {}".format(ip))
     return ip
 
 
@@ -40,13 +49,15 @@ def get_dns_ip():
     Returns the current public resolvable DNS
     name of the user-configured domain
     '''
-    import socket
-    return socket.gethostbyname(API_DOMAIN)
+    logging.debug("Querying current IP of dynamic domain from local DNS")
+    current_ip = socket.gethostbyname(API_DOMAIN)
+    logging.info("Current resolved IP (via local DNS): {}".format(current_ip))
+    return current_ip
 
 
 # does the current resolvable IP match the external IP?
 if get_dns_ip() == get_ext_ip_opendns():
-    print("DNS record already matches external IP")
+    logging.info("DNS record already matches external IP")
     sys.exit()
 
 dyn_ip_addr = get_ext_ip_opendns()
@@ -54,16 +65,21 @@ dyn_ip_addr = get_ext_ip_opendns()
 # read DO API token file
 with open(API_TOKEN_FN, 'r') as f:
     api_token = f.readline().strip()
+    logging.debug("API token (from " + API_TOKEN_FN + " file): {}".format(api_token))
+
 # build the headers
 http_headers = {"Authorization": "Bearer " + api_token}
 
+
 # does the domain exist on the DO DNS servers?
 try:
-    r = requests.get(
+    q = requests.get(
             API_ENDPOINT + API_DOMAIN, headers=http_headers
-            ).json()['domain']
+            )
+    r = q.json()['domain']
 except (KeyError, ValueError):
-    print("Domain " + API_DOMAIN + " can't be found on the nameserver")
+    logging.info("Domain " + API_DOMAIN + " can't be accessed via the nameserver API")
+    logging.debug("Request text: {}".format(q.text))
     sys.exit(-1)
 
 # get the Digital Ocean ID of the A record
